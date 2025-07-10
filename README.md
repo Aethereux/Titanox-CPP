@@ -355,11 +355,11 @@ It will install theos for you. wait until installation is completed.
 * You can use **Theos** to build your own jailbroken or jailed/non-jailbroken IOS tweaks, frameworks, libraries etc.
 * For this, git clone this repo:
 ```bash
-git clone https://github.com/Ragekill3377/Titanox.git
+git clone https://github.com/Ragekill3377/Titanox-CPP.git
 ```
 * cd into the directory:
 ```bash
-cd Titanox
+cd Titanox-CPP/Tit*/lib*
 ```
 
 * Open ``Makefile`` in any editor.
