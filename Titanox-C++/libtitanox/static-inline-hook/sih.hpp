@@ -26,10 +26,10 @@ class MachOHooker {
 public:
     explicit MachOHooker(const std::string& macho_name);
     ~MachOHooker() = default;
-    std::optional<std::string> apply_patch(uint64_t vaddr, const std::string& patch_bytes);
-    void* hook_function(uint64_t vaddr, void* replacement);
-    bool activate_patch(uint64_t vaddr, const std::string& patch_bytes);
-    bool deactivate_patch(uint64_t vaddr, const std::string& patch_bytes);
+    std::optional<std::string> ApplyPatch(uint64_t vaddr, const std::string& patch_bytes);
+    void* HookFunction(uint64_t vaddr, void* replacement);
+    bool ActivatePatch(uint64_t vaddr, const std::string& patch_bytes);
+    bool DeactivatePatch(uint64_t vaddr, const std::string& patch_bytes);
 private:
     static constexpr size_t CODE_PAGE_SIZE = 4096;
     static constexpr size_t DATA_PAGE_SIZE = 4096;
@@ -48,19 +48,19 @@ private:
         uint64_t min_section_offset{0};
         segment_command_64* linkedit_seg{nullptr};
     };
-    bool load_macho_data();
-    bool validate_macho();
-    bool add_hook_sections();
-    bool update_linkedit_commands(uint64_t offset);
-    bool save_patched_binary();
-    bool apply_inline_patch(HookBlock* block, uint64_t func_rva, void* func_data, uint64_t target_rva, void* target_data, const std::string& patch_bytes);
-    static bool hex_to_bytes(const std::string& hex, std::vector<uint8_t>& buffer);
-    std::optional<MachOInfo> parse_macho_info();
-    uint64_t va_to_rva(uint64_t va) const;
-    static uint64_t calculate_patch_hash(uint64_t vaddr, const std::string& patch);
-    void* rva_to_data(uint64_t rva) const;
-    void* find_module_base() const;
-    HookBlock* find_hook_block(void* base, uint64_t vaddr) const;
+    bool LoadMachoData();
+    bool ValidateMacho();
+    bool AddHookSections();
+    bool UpdateLinkeditCommands(uint64_t offset);
+    bool SavePatchedBinary();
+    bool ApplyInlinePatch(HookBlock* block, uint64_t func_rva, void* func_data, uint64_t target_rva, void* target_data, const std::string& patch_bytes);
+    static bool HexToBytes(const std::string& hex, std::vector<uint8_t>& buffer);
+    std::optional<MachOInfo> ParseMachoInfo();
+    uint64_t VaToRva(uint64_t va) const;
+    static uint64_t CalculatePatchHash(uint64_t vaddr, const std::string& patch);
+    void* RvaToData(uint64_t rva) const;
+    void* FindModuleBase() const;
+    HookBlock* FindHookBlock(void* base, uint64_t vaddr) const;
 };
 
 }

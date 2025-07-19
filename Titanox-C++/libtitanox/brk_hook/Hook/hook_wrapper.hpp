@@ -5,11 +5,11 @@
 
 class HookWrapper {
 public:
-    static bool callHook(void *origArray[], void *hookArray[], int count) {
-        return hook(origArray, hookArray, count);
+    static bool CallHook(void *origArray[], void *hookArray[], int count) {
+        return Hook(origArray, hookArray, count);
     }
-    
-    static bool callUnHook(void *origArray[], int count) {
-        return unhook(origArray, count);
+
+    static bool CallUnhook(void *origArray[], int count) {
+        return Unhook(origArray, count);
     }
 };

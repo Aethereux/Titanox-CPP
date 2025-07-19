@@ -7,13 +7,13 @@
 #include <sys/mman.h>
 #include <mach/error.h>
 
-bool THPatchMem::memcpyAndValidate(void* address, const uint8_t* buffer, size_t bufferSize) {
+bool THPatchMem::MemcpyAndValidate(void* address, const uint8_t* buffer, size_t bufferSize) {
     std::unique_ptr<uint8_t[]> bufferCopy(new uint8_t[bufferSize]);
     std::memcpy(bufferCopy.get(), buffer, bufferSize);
     return std::memcmp(address, bufferCopy.get(), bufferSize) == 0;
 }
 
-bool THPatchMem::writeWithVMWrite(void* address, const uint8_t* buffer, size_t bufferSize) {
+bool THPatchMem::WriteWithVMWrite(void* address, const uint8_t* buffer, size_t bufferSize) {
     std::unique_ptr<uint8_t[]> bufferCopy(new uint8_t[bufferSize]);
     std::memcpy(bufferCopy.get(), buffer, bufferSize);
 
@@ -49,8 +49,8 @@ bool THPatchMem::MemPatchR(void* address, uint8_t* buffer, size_t bufferSize) {
         return false;
     }
 
-    if (!memcpyAndValidate(reinterpret_cast<void*>(pageStart + pageOffset), bufferCopy.get(), bufferSize)) {
-        if (!writeWithVMWrite(reinterpret_cast<void*>(pageStart + pageOffset), bufferCopy.get(), bufferSize)) {
+    if (!MemcpyAndValidate(reinterpret_cast<void*>(pageStart + pageOffset), bufferCopy.get(), bufferSize)) {
+        if (!WriteWithVMWrite(reinterpret_cast<void*>(pageStart + pageOffset), bufferCopy.get(), bufferSize)) {
             THLog("%s", MEMCPY_ERROR_MSG);
             return false;
         }

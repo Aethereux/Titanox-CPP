@@ -83,14 +83,14 @@ kern_return_t catch_mach_exception_raise_state(
 }
 
 // custom exception handler which tells the cpu to redirect execution
-void *exception_handler(void *unused) {
+void *ExceptionHandler(void *unused) {
     while (1) {
         mach_msg_server(mach_exc_server, sizeof(union __RequestUnion__catch_mach_exc_subsystem), server, MACH_MSG_OPTION_NONE);
     }
     return NULL;
 }
 
-bool hook(void *old[], void *new[], int count) {
+bool Hook(void *old[], void *new[], int count) {
     if (count > 6) return false; // max 6
     
     static bool initialized;
@@ -119,7 +119,7 @@ bool hook(void *old[], void *new[], int count) {
         
         if (!thread_initialized) {
             pthread_t thread;
-            pthread_create(&thread, NULL, exception_handler, NULL);
+            pthread_create(&thread, NULL, ExceptionHandler, NULL);
             thread_initialized = true;
         }
         
@@ -153,7 +153,7 @@ bool hook(void *old[], void *new[], int count) {
     return success;
 }
 
-bool unhook(void *old[], int count) {
+bool Unhook(void *old[], int count) {
     arm_debug_state64_t state = {};
     
     for (int i = 0; i < count; i++) {

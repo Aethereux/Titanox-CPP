@@ -14,7 +14,7 @@ constexpr const char* MEMCPY_ERROR_MSG      = "[THPatchMem] memcpy failed, fallb
 class THPatchMem {
 public:
     static bool PatchMemory(void* address, uint8_t* buffer, size_t bufferSize);
-    static bool memcpyAndValidate(void* address, const uint8_t* buffer, size_t bufferSize);
-    static bool writeWithVMWrite(void* address, const uint8_t* buffer, size_t bufferSize);
+    static bool MemcpyAndValidate(void* address, const uint8_t* buffer, size_t bufferSize);
+    static bool WriteWithVMWrite(void* address, const uint8_t* buffer, size_t bufferSize);
     static bool MemPatchR(void* address, uint8_t* buffer, size_t bufferSize);
 };

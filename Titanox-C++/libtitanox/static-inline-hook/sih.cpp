@@ -17,7 +17,7 @@
 namespace fs = std::filesystem;
 using namespace SIH;
 
-std::vector<uint8_t> readtovecfile(const std::string& path) {
+std::vector<uint8_t> ReadToVecFile(const std::string& path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open file: " + path);
@@ -32,7 +32,7 @@ std::vector<uint8_t> readtovecfile(const std::string& path) {
 }
 
 // vec -> file
-bool writevectofile(const std::string& path, const std::vector<uint8_t>& data) {
+bool WriteVecToFile(const std::string& path, const std::vector<uint8_t>& data) {
     std::ofstream file(path, std::ios::binary);
     if (!file.is_open()) {
         return false;
@@ -42,7 +42,7 @@ bool writevectofile(const std::string& path, const std::vector<uint8_t>& data) {
 }
 
 // already in utils
-std::string getHomeDirectory() {
+std::string GetHomeDirectory() {
     CFURLRef docsURL = CFCopyHomeDirectoryURL();
     if (!docsURL) return "";
     CFURLRef finalURL = CFURLCreateCopyAppendingPathComponent(NULL, docsURL, CFSTR("Documents"), true);
@@ -60,7 +60,7 @@ std::string getHomeDirectory() {
 
 // not even i knew this existed
 // can't use nsbundle so...
-std::string getBundlePath() {
+std::string GetBundlePath() {
     char path[1024];
     uint32_t size = sizeof(path);
     if (_NSGetExecutablePath(path, &size) == 0) {
@@ -74,16 +74,16 @@ MachOHooker::MachOHooker(const std::string& macho_name) : macho_name_(macho_name
         LOG("can't init, no name...");
         return;
     }
-    load_macho_data();
+    LoadMachoData();
 }
 
-bool MachOHooker::load_macho_data() {
+bool MachOHooker::LoadMachoData() {
     // dont need to append 'Documents', its already done in homedir fetch
-    std::string save_path = getHomeDirectory() + "/titanox-hook/" + macho_name_;
+    std::string save_path = GetHomeDirectory() + "/titanox-hook/" + macho_name_;
 
     THLog("checking from an already patched version @ : %s", save_path.c_str());
     try {
-        macho_data_ = readtovecfile(save_path);
+        macho_data_ = ReadToVecFile(save_path);
     } catch (const std::exception& e) {
         if (fs::exists(save_path)) {
             THLog("failed to load patched Mach-O from: %s", save_path.c_str());
@@ -95,7 +95,7 @@ bool MachOHooker::load_macho_data() {
         THLog("Since it's not found, let's go for the real thing...");
         std::string path;
         std::string targetName = macho_name_;
-        std::string bundlePath = getBundlePath();
+        std::string bundlePath = GetBundlePath();
         for (const auto& entry : fs::recursive_directory_iterator(bundlePath)) {
             if (entry.path().filename() == targetName) {
                 path = entry.path().string();
@@ -109,17 +109,17 @@ bool MachOHooker::load_macho_data() {
         }
 
         try {
-            macho_data_ = readtovecfile(path);
+            macho_data_ = ReadToVecFile(path);
         } catch (const std::exception& e) {
             THLog("Couldn't load its data, can't even read?: %s", path.c_str());
             return false;
         }
     }
     THLog("loaded binary");
-    return validate_macho();
+    return ValidateMacho();
 }
 
-bool MachOHooker::validate_macho() {
+bool MachOHooker::ValidateMacho() {
     if (macho_data_.size() < sizeof(mach_header_64)) {
         LOG("invalid file: too small");
         return false;
@@ -174,7 +174,7 @@ bool MachOHooker::validate_macho() {
     return true;
 }
 
-std::optional<MachOHooker::MachOInfo> MachOHooker::parse_macho_info() {
+std::optional<MachOHooker::MachOInfo> MachOHooker::ParseMachoInfo() {
     MachOInfo info;
     auto* lc = reinterpret_cast<load_command*>(reinterpret_cast<uint64_t>(header_) + sizeof(*header_));
 
@@ -215,8 +215,8 @@ std::optional<MachOHooker::MachOInfo> MachOHooker::parse_macho_info() {
     return info;
 }
 
-bool MachOHooker::add_hook_sections() {
-    auto info_opt = parse_macho_info();
+bool MachOHooker::AddHookSections() {
+    auto info_opt = ParseMachoInfo();
     if (!info_opt) {
         return false;
     }
@@ -300,7 +300,7 @@ bool MachOHooker::add_hook_sections() {
     header_->ncmds += 2;
     header_->sizeofcmds += text_seg.cmdsize + data_seg.cmdsize;
 
-    if (!update_linkedit_commands(text_seg.filesize + data_seg.filesize)) {
+    if (!UpdateLinkeditCommands(text_seg.filesize + data_seg.filesize)) {
         return false;
     }
 
@@ -313,10 +313,10 @@ bool MachOHooker::add_hook_sections() {
     macho_data_.insert(macho_data_.end(), data_page.get(), data_page.get() + DATA_PAGE_SIZE);
 
     macho_data_.insert(macho_data_.end(), linkedit_data.begin(), linkedit_data.end());
-    return save_patched_binary();
+    return SavePatchedBinary();
 }
 
-bool MachOHooker::update_linkedit_commands(uint64_t offset) {
+bool MachOHooker::UpdateLinkeditCommands(uint64_t offset) {
     auto* lc = reinterpret_cast<load_command*>(reinterpret_cast<uint64_t>(header_) + sizeof(*header_));
     for (uint32_t i = 0; i < header_->ncmds; ++i) {
         switch (lc->cmd) {
@@ -362,19 +362,19 @@ bool MachOHooker::update_linkedit_commands(uint64_t offset) {
     return true;
 }
 
-bool MachOHooker::save_patched_binary() {
-    std::string save_path = getHomeDirectory() + "/Documents/titanox-hook/" + macho_name_;
+bool MachOHooker::SavePatchedBinary() {
+    std::string save_path = GetHomeDirectory() + "/Documents/titanox-hook/" + macho_name_;
     
     fs::create_directories(fs::path(save_path).parent_path());
     
-    if (!writevectofile(save_path, macho_data_)) {
+    if (!WriteVecToFile(save_path, macho_data_)) {
         LOG("can't save patched binary to: %s", save_path.c_str());
         return false;
     }
     return true;
 }
 
-uint64_t MachOHooker::va_to_rva(uint64_t va) const {
+uint64_t MachOHooker::VaToRva(uint64_t va) const {
     uint64_t header_vaddr = 0;
     auto* lc = reinterpret_cast<load_command*>(reinterpret_cast<uint64_t>(header_) + sizeof(*header_));
 
@@ -395,7 +395,7 @@ uint64_t MachOHooker::va_to_rva(uint64_t va) const {
     return header_vaddr ? va - header_vaddr : va;
 }
 
-void* MachOHooker::rva_to_data(uint64_t rva) const {
+void* MachOHooker::RvaToData(uint64_t rva) const {
     uint64_t header_vaddr = 0;
     auto* lc = reinterpret_cast<load_command*>(reinterpret_cast<uint64_t>(header_) + sizeof(*header_));
 
@@ -435,8 +435,8 @@ void* MachOHooker::rva_to_data(uint64_t rva) const {
     return nullptr;
 }
 
-void* MachOHooker::find_module_base() const {
-    std::string image_path = getBundlePath() + "/" + macho_name_;
+void* MachOHooker::FindModuleBase() const {
+    std::string image_path = GetBundlePath() + "/" + macho_name_;
     for (uint32_t i = 0; i < _dyld_image_count(); ++i) {
         const char* image_name = _dyld_get_image_name(i);
         if (image_path == image_name) {
@@ -447,7 +447,7 @@ void* MachOHooker::find_module_base() const {
     return nullptr;
 }
 
-HookBlock* MachOHooker::find_hook_block(void* base, uint64_t vaddr) const {
+HookBlock* MachOHooker::FindHookBlock(void* base, uint64_t vaddr) const {
     auto* header = reinterpret_cast<mach_header_64*>(base);
     auto* lc = reinterpret_cast<load_command*>(reinterpret_cast<uint64_t>(header) + sizeof(*header));
     segment_command_64* text_seg = nullptr;
@@ -476,7 +476,7 @@ HookBlock* MachOHooker::find_hook_block(void* base, uint64_t vaddr) const {
     return nullptr;
 }
 
-bool MachOHooker::hex_to_bytes(const std::string& hex, std::vector<uint8_t>& buffer) {
+bool MachOHooker::HexToBytes(const std::string& hex, std::vector<uint8_t>& buffer) {
     if (hex.size() % 2 != 0) {
         LOG("Invalid hex string length");
         return false;
@@ -501,11 +501,11 @@ bool MachOHooker::hex_to_bytes(const std::string& hex, std::vector<uint8_t>& buf
     return true;
 }
 
-uint64_t MachOHooker::calculate_patch_hash(uint64_t vaddr, const std::string& patch) {
+uint64_t MachOHooker::CalculatePatchHash(uint64_t vaddr, const std::string& patch) {
     return std::hash<std::string>{}(patch) ^ vaddr;
 }
 
-bool MachOHooker::apply_inline_patch(HookBlock* block, uint64_t func_rva, void* func_data, uint64_t target_rva, void* target_data, const std::string& patch_bytes) {
+bool MachOHooker::ApplyInlinePatch(HookBlock* block, uint64_t func_rva, void* func_data, uint64_t target_rva, void* target_data, const std::string& patch_bytes) {
     if (!block || !func_data || !target_data) {
         LOG("Invalid patch parameters");
         return false;
@@ -522,19 +522,19 @@ bool MachOHooker::apply_inline_patch(HookBlock* block, uint64_t func_rva, void* 
 
     if (!patch_bytes.empty()) {
         std::vector<uint8_t> patch_data;
-        if (!hex_to_bytes(patch_bytes, patch_data)) {
+        if (!HexToBytes(patch_bytes, patch_data)) {
             LOG("Failed to convert patch bytes");
             return false;
         }
         block->patch_size = patch_data.size();
-        block->patch_hash = calculate_patch_hash(func_rva, patch_bytes);
+        block->patch_hash = CalculatePatchHash(func_rva, patch_bytes);
         memcpy(func_data, patch_data.data(), patch_data.size());
     }
 
     return true;
 }
 
-std::optional<std::string> MachOHooker::apply_patch(uint64_t vaddr, const std::string& patch_bytes) {
+std::optional<std::string> MachOHooker::ApplyPatch(uint64_t vaddr, const std::string& patch_bytes) {
     if (vaddr % 4 != 0) {
         return "Offset not aligned to 4 bytes";
     }
@@ -548,24 +548,24 @@ std::optional<std::string> MachOHooker::apply_patch(uint64_t vaddr, const std::s
     }
 
     if (!text_segment_ || !data_segment_) {
-        if (!add_hook_sections()) {
+        if (!AddHookSections()) {
             return "Failed to add hook sections";
         }
     }
 
-    uint64_t func_rva = va_to_rva(vaddr);
-    void* func_data = rva_to_data(func_rva);
+    uint64_t func_rva = VaToRva(vaddr);
+    void* func_data = RvaToData(func_rva);
     if (!func_data) {
         return "Invalid function offset";
     }
 
-    uint64_t target_rva = va_to_rva(text_segment_->vmaddr);
-    void* target_data = rva_to_data(target_rva);
+    uint64_t target_rva = VaToRva(text_segment_->vmaddr);
+    void* target_data = RvaToData(target_rva);
     if (!target_data) {
         return "Invalid target offset";
     }
 
-    auto* hook_block = reinterpret_cast<HookBlock*>(rva_to_data(va_to_rva(data_segment_->vmaddr)));
+    auto* hook_block = reinterpret_cast<HookBlock*>(RvaToData(VaToRva(data_segment_->vmaddr)));
     HookBlock* free_block = nullptr;
 
     for (size_t i = 0; i < DATA_PAGE_SIZE / sizeof(HookBlock); ++i) {
@@ -584,23 +584,23 @@ std::optional<std::string> MachOHooker::apply_patch(uint64_t vaddr, const std::s
         return "No free hook blocks available";
     }
 
-    if (!apply_inline_patch(free_block, func_rva, func_data, target_rva, target_data, patch_bytes)) {
+    if (!ApplyInlinePatch(free_block, func_rva, func_data, target_rva, target_data, patch_bytes)) {
         return "Failed to apply inline patch";
     }
 
-    if (!save_patched_binary()) {
+    if (!SavePatchedBinary()) {
         return "Failed to save patched binary";
     }
 
     return "Patch applied successfully. Replace the file in Documents/titanox-hook with the original in the app bundle and re-sign.";
 }
 
-void* MachOHooker::hook_function(uint64_t vaddr, void* replacement) {
-    void* base = find_module_base();
+void* MachOHooker::HookFunction(uint64_t vaddr, void* replacement) {
+    void* base = FindModuleBase();
     if (!base) {
         return nullptr;
     }
-    HookBlock* block = find_hook_block(base, vaddr);
+    HookBlock* block = FindHookBlock(base, vaddr);
     if (!block) {
         LOG("Hook block not found for vaddr: %p", reinterpret_cast<void*>(vaddr));
         return nullptr;
@@ -609,18 +609,18 @@ void* MachOHooker::hook_function(uint64_t vaddr, void* replacement) {
     return reinterpret_cast<void*>(reinterpret_cast<uint64_t>(base) + block->original_vaddr);
 }
 
-bool MachOHooker::activate_patch(uint64_t vaddr, const std::string& patch_bytes) {
-    void* base = find_module_base();
+bool MachOHooker::ActivatePatch(uint64_t vaddr, const std::string& patch_bytes) {
+    void* base = FindModuleBase();
     if (!base) {
         LOG("Can't find module for vaddr: %p", reinterpret_cast<void*>(vaddr));
         return false;
     }
-    HookBlock* block = find_hook_block(base, vaddr & ~3);
+    HookBlock* block = FindHookBlock(base, vaddr & ~3);
     if (!block) {
         LOG("Hook block not found for vaddr: %p", reinterpret_cast<void*>(vaddr));
         return false;
     }
-    if (block->patch_hash != calculate_patch_hash(vaddr, patch_bytes)) {
+    if (block->patch_hash != CalculatePatchHash(vaddr, patch_bytes)) {
         LOG("Patch hash mismatch for vaddr: %p", reinterpret_cast<void*>(vaddr));
         return false;
     }
@@ -628,19 +628,19 @@ bool MachOHooker::activate_patch(uint64_t vaddr, const std::string& patch_bytes)
     return true;
 }
 
-bool MachOHooker::deactivate_patch(uint64_t vaddr, const std::string& patch_bytes) {
-    void* base = find_module_base();
+bool MachOHooker::DeactivatePatch(uint64_t vaddr, const std::string& patch_bytes) {
+    void* base = FindModuleBase();
     if (!base) {
         LOG("Cannot find module for vaddr: %p", reinterpret_cast<void*>(vaddr));
         return false;
     }
 
-    HookBlock* block = find_hook_block(base, vaddr & ~3);
+    HookBlock* block = FindHookBlock(base, vaddr & ~3);
     if (!block) {
         LOG("Hook block not found for vaddr: %p", reinterpret_cast<void*>(vaddr));
         return false;
     }
-    if (block->patch_hash != calculate_patch_hash(vaddr, patch_bytes)) {
+    if (block->patch_hash != CalculatePatchHash(vaddr, patch_bytes)) {
         LOG("Patch hash mismatch for vaddr: %p", reinterpret_cast<void*>(vaddr));
         return false;
     }

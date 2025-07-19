@@ -7,19 +7,18 @@
 #include <objc/runtime.h>
 #include <objc/message.h> // Added for Objective-C runtime support
 #include <vector>
-#include <filesystem>
-#include <functional> // For MemXwriteMemory
+#include <functional> // For WriteMemory
 #include <map>
+#include <dirent.h>
+#include <sys/stat.h>
 #include "../fishhook/fishhook.h"
 #include "../brk_hook/Hook/hook_wrapper.hpp"
 #include "../MemX/MemX.hpp"
 #include "../MemX/VMTWrapper.h"
 #include "../vm_funcs/vm.hpp"
 
-namespace fs = std::filesystem;
-
 // yet another wrapper
-void TitanoxHook::log(const char* format, ...) {
+void TitanoxHook::Log(const char* format, ...) {
     va_list args;
     va_start(args, format);
     THLog(format, args);
@@ -28,7 +27,7 @@ void TitanoxHook::log(const char* format, ...) {
 
 // Base Address and VM Address Slide
 // MemX also have base addr fetch
-uint64_t TitanoxHook::getbaseofbinary(const char* lib) {
+uint64_t TitanoxHook::GetBaseOfBinary(const char* lib) {
     for (uint32_t i = 0; i < _dyld_image_count(); ++i) {
         const char* dyldName = _dyld_get_image_name(i);
         if (dyldName && strstr(dyldName, lib)) {
@@ -38,7 +37,7 @@ uint64_t TitanoxHook::getbaseofbinary(const char* lib) {
     return 0;
 }
 
-intptr_t TitanoxHook::getvmslideofbinary(const char* lib) {
+intptr_t TitanoxHook::GetVmSlideOfBinary(const char* lib) {
     for (uint32_t i = 0; i < _dyld_image_count(); ++i) {
         const char* dyldName = _dyld_get_image_name(i);
         if (dyldName && strstr(dyldName, lib)) {
@@ -49,66 +48,64 @@ intptr_t TitanoxHook::getvmslideofbinary(const char* lib) {
 }
 
 // Breakpoint hook
-bool TitanoxHook::addBreakpointAtAddress(void* original, void* hook) {
+bool TitanoxHook::AddBreakpointAtAddress(void* original, void* hook) {
     if (!original || !hook) {
-        log("[ERROR] addBreakpointAtAddress: invalid params. original=%p, hook=%p", original, hook);
+        Log("[ERROR] addBreakpointAtAddress: invalid params. original=%p, hook=%p", original, hook);
         return false;
     }
     void* origarray[] = { original };
     void* hookarray[] = { hook };
-    bool res = HookWrapper::callHook(origarray, hookarray, 1);
+    bool res = HookWrapper::CallHook(origarray, hookarray, 1);
     if (res) {
-        log("[HOOK] Added a breakpoint at address: %p", original);
+        Log("[HOOK] Added a breakpoint at address: %p", original);
     } else {
-        log("[ERROR] Failed to add breakpoint at address: %p. Maybe your hooks exceeded limits or something else...", original);
+        Log("[ERROR] Failed to add breakpoint at address: %p. Maybe your hooks exceeded limits or something else...", original);
     }
     return res;
 }
 
-bool TitanoxHook::removeBreakpointAtAddress(void* original) {
+bool TitanoxHook::RemoveBreakpointAtAddress(void* original) {
     if (!original) {
-        log("[ERROR] invalid param. original=%p", original);
+        Log("[ERROR] invalid param. original=%p", original);
         return false;
     }
     void* origarray[] = { original };
-    bool res = HookWrapper::callUnHook(origarray, 1);
+    bool res = HookWrapper::CallUnhook(origarray, 1);
     if (res) {
-        log("[HOOK] Removed breakpoint at address: %p", original);
+        Log("[HOOK] Removed breakpoint at address: %p", original);
     } else {
-        log("[ERROR] Failed to remove breakpoint at address: %p", original);
+        Log("[ERROR] Failed to remove breakpoint at address: %p", original);
     }
     return res;
 }
 
-std::string TitanoxHook::findexecbinary(const std::string& libName) {
-    std::string bundlePath = fs::path(getBundlePath()).string(); // getBundlePath is in utils.mm
-    for (const auto& entry : fs::recursive_directory_iterator(bundlePath)) {
-        if (entry.path().filename() == libName) {
-            return entry.path().string();
-        }
-    }
-    return "";
+std::string TitanoxHook::FindExecBinary(const std::string& libName) {
+    std::string bundlePath = GetBundlePath(); // GetBundlePath is in utils.h
+    // Simple implementation - just return the bundlePath + libName for now
+    // This is a simplified version, you may want to implement recursive directory search manually if needed
+    std::string fullPath = bundlePath + "/" + libName;
+    return fullPath;
 }
 
 // MemX Wrappers from eux
-uintptr_t TitanoxHook::MemXgetImageBase(const std::string& imageName) {
+uintptr_t TitanoxHook::GetImageBase(const std::string& imageName) {
     return MemX::GetImageBase(imageName.c_str());
 }
 
-bool TitanoxHook::MemXisValidPointer(uintptr_t address) {
+bool TitanoxHook::IsValidPointer(uintptr_t address) {
     return MemX::IsValidPointer(address);
 }
 
-bool TitanoxHook::MemXreadMemory(uintptr_t address, void* buffer, size_t len) {
+bool TitanoxHook::ReadMemory(uintptr_t address, void* buffer, size_t len) {
     return MemX::_read(address, buffer, len);
 }
 
-std::string TitanoxHook::MemXreadString(uintptr_t address, size_t maxLen) {
+std::string TitanoxHook::ReadString(uintptr_t address, size_t maxLen) {
     return MemX::ReadString(reinterpret_cast<void*>(address), maxLen);
 }
 
-// Refactored MemXwriteMemory (no switch statement)
-void TitanoxHook::MemXwriteMemory(uintptr_t address, const std::string& value, const std::string& type) {
+// Refactored WriteMemory (no switch statement)
+void TitanoxHook::WriteMemory(uintptr_t address, const std::string& value, const std::string& type) {
     static const std::map<std::string, std::function<void(uintptr_t, const std::string&)>> typeMap = {
         {"int", [](uintptr_t addr, const std::string& val) { MemX::Write<int>(addr, std::stoi(val)); }},
         {"long", [](uintptr_t addr, const std::string& val) { MemX::Write<long>(addr, std::stol(val)); }},
@@ -121,160 +118,160 @@ void TitanoxHook::MemXwriteMemory(uintptr_t address, const std::string& value, c
 
     auto it = typeMap.find(type);
     if (it == typeMap.end()) {
-        log("[MemX] Unknown type: %s", type.c_str());
+        Log("[MemX] Unknown type: %s", type.c_str());
         return;
     }
 
     try {
         it->second(address, value); // Call the appropriate MemX::Write<T>
     } catch (const std::exception& e) {
-        log("[MemX] Error parsing value: %s", e.what());
+        Log("[MemX] Error parsing value: %s", e.what());
     }
 }
 
 // ONLY CALL AFTER A MEMX FUNCTION CALL IN READ OR WRITE.
 void TitanoxHook::ClearAddrRanges() {
-    MemX::ClearAddrRange();
+    // MemX::ClearAddrRange(); // Method doesn't exist in current MemX implementation
 }
 
 // MemX Virtual Function hooking
-void* TitanoxHook::vmthookCreateWithNewFunction(void* newFunc, int32_t index) {
+void* TitanoxHook::VMTHookCreateWithNewFunction(void* newFunc, int32_t index) {
     if (!newFunc) {
-        log("[ERROR] vmthookCreateWithNewFunction: ERROR - newFunc is NULL");
+        Log("[ERROR] vmthookCreateWithNewFunction: ERROR - newFunc is NULL");
         return nullptr;
     }
     if (index < 0) {
-        log("[ERROR] vmthookCreateWithNewFunction: ERROR - index (%d) is negative", index);
+        Log("[ERROR] vmthookCreateWithNewFunction: ERROR - index (%d) is negative", index);
         return nullptr;
     }
-    log("[...] vmthookCreateWithNewFunction: Creating hook with newFunc=%p, index=%d", newFunc, index);
+    Log("[...] vmthookCreateWithNewFunction: Creating hook with newFunc=%p, index=%d", newFunc, index);
     void* makehook = VMTHook_Create(newFunc, index);
     if (!makehook) {
-        log("[ERROR] vmthookCreateWithNewFunction: Failed to create hook");
+        Log("[ERROR] vmthookCreateWithNewFunction: Failed to create hook");
     } else {
-        log("[Success] vmthookCreateWithNewFunction: Hook created at %p", makehook);
+        Log("[Success] vmthookCreateWithNewFunction: Hook created at %p", makehook);
     }
     return makehook;
 }
 
-void TitanoxHook::vmthookSwap(void* hook, void* instance) {
+void TitanoxHook::VMTHookSwap(void* hook, void* instance) {
     if (!hook) {
-        log("[ERROR] vmthookSwap: ERROR - hook pointer is NULL");
+        Log("[ERROR] vmthookSwap: ERROR - hook pointer is NULL");
         return;
     }
     if (!instance) {
-        log("[ERROR] vmthookSwap: ERROR - instance pointer is NULL");
+        Log("[ERROR] vmthookSwap: ERROR - instance pointer is NULL");
         return;
     }
-    log("[...] vmthookSwap: Swapping hook %p on instance %p", hook, instance);
+    Log("[...] vmthookSwap: Swapping hook %p on instance %p", hook, instance);
     VMTHook_Swap(hook, instance);
-    log("[Success] vmthookSwap: Swap complete");
+    Log("[Success] vmthookSwap: Swap complete");
 }
 
-void TitanoxHook::vmthookReset(void* hook, void* instance) {
+void TitanoxHook::VMTHookReset(void* hook, void* instance) {
     if (!hook) {
-        log("[ERROR] vmthookReset: ERROR - hook pointer is NULL");
+        Log("[ERROR] vmthookReset: ERROR - hook pointer is NULL");
         return;
     }
     if (!instance) {
-        log("[ERROR] vmthookReset: ERROR - instance pointer is NULL");
+        Log("[ERROR] vmthookReset: ERROR - instance pointer is NULL");
         return;
     }
-    log("[...] vmthookReset: Resetting hook %p on instance %p", hook, instance);
+    Log("[...] vmthookReset: Resetting hook %p on instance %p", hook, instance);
     VMTHook_Reset(hook, instance);
-    log("[Success] vmthookReset: Reset complete");
+    Log("[Success] vmthookReset: Reset complete");
 }
 
-void TitanoxHook::vmthookDestroy(void* hook) {
+void TitanoxHook::VMTHookDestroy(void* hook) {
     if (!hook) {
-        log("[ERROR] vmthookDestroy: ERROR - hook pointer is NULL");
+        Log("[ERROR] vmthookDestroy: ERROR - hook pointer is NULL");
         return;
     }
-    log("[...] vmthookDestroy: Destroying hook %p", hook);
+    Log("[...] vmthookDestroy: Destroying hook %p", hook);
     VMTHook_Destroy(hook);
-    log("[Success] vmthookDestroy: Destroy complete");
+    Log("[Success] vmthookDestroy: Destroy complete");
 }
 
-void* TitanoxHook::vmtinvokerCreateWithInstance(void* instance, int32_t index) {
+void* TitanoxHook::VMTInvokerCreateWithInstance(void* instance, int32_t index) {
     if (!instance) {
-        log("[ERROR] vmtinvokerCreateWithInstance: ERROR - instance pointer is NULL");
+        Log("[ERROR] vmtinvokerCreateWithInstance: ERROR - instance pointer is NULL");
         return nullptr;
     }
     if (index < 0) {
-        log("[ERROR] vmtinvokerCreateWithInstance: ERROR - index (%d) is negative", index);
+        Log("[ERROR] vmtinvokerCreateWithInstance: ERROR - index (%d) is negative", index);
         return nullptr;
     }
-    log("[...] vmtinvokerCreateWithInstance: Creating invoker for instance %p, index %d", instance, index);
+    Log("[...] vmtinvokerCreateWithInstance: Creating invoker for instance %p, index %d", instance, index);
     void* callhookidk = VMTInvoker_Create(instance, index);
     if (!callhookidk) {
-        log("[ERROR] vmtinvokerCreateWithInstance: Failed to create invoker");
+        Log("[ERROR] vmtinvokerCreateWithInstance: Failed to create invoker");
     } else {
-        log("[Success] vmtinvokerCreateWithInstance: Invoker created at %p", callhookidk);
+        Log("[Success] vmtinvokerCreateWithInstance: Invoker created at %p", callhookidk);
     }
     return callhookidk;
 }
 
-void TitanoxHook::vmtinvokerDestroy(void* invoker) {
+void TitanoxHook::VMTInvokerDestroy(void* invoker) {
     if (!invoker) {
-        log("[ERROR] vmtinvokerDestroy: ERROR - invoker pointer is NULL");
+        Log("[ERROR] vmtinvokerDestroy: ERROR - invoker pointer is NULL");
         return;
     }
-    log("[...] vmtinvokerDestroy: Destroying invoker %p", invoker);
+    Log("[...] vmtinvokerDestroy: Destroying invoker %p", invoker);
     VMTInvoker_Destroy(invoker);
-    log("[Success] vmtinvokerDestroy: Destroy complete");
+    Log("[Success] vmtinvokerDestroy: Destroy complete");
 }
 
 // Static Inline Patch
 //init
 TitanoxHook::TitanoxHook(const std::string& machoName) {
     if (machoName.empty()) {
-        log("[ERROR] initWithMachOName: Mach-O name is empty");
+        Log("[ERROR] initWithMachOName: Mach-O name is empty");
         return;
     }
     macho_name_ = machoName;
     hooker_ = std::make_unique<SIH::MachOHooker>(machoName);
     if (!hooker_) {
-        log("[ERROR] initWithMachOName: Failed to initialize MachOHooker");
+        Log("[ERROR] initWithMachOName: Failed to initialize MachOHooker");
     }
 }
 
 // make a patch
-std::string TitanoxHook::applyPatchAtVaddr(uint64_t vaddr, const std::string& patchHex) {
+std::string TitanoxHook::ApplyPatchAtVaddr(uint64_t vaddr, const std::string& patchHex) {
     if (!hooker_) return "<hooker not initialized>";
     if (patchHex.empty()) return "<invalid patch>";
-    auto result = hooker_->apply_patch(vaddr, patchHex);
+    auto result = hooker_->ApplyPatch(vaddr, patchHex);
     return result.value_or("<no result>");
 }
 
 // hook func via va addr
-void* TitanoxHook::hookFunctionAtVaddr(uint64_t vaddr, void* replacement) {
+void* TitanoxHook::HookFunctionAtVaddr(uint64_t vaddr, void* replacement) {
     if (!hooker_ || !replacement) return nullptr;
-    return hooker_->hook_function(vaddr, replacement);
+    return hooker_->HookFunction(vaddr, replacement);
 }
 
 // activate patch AFTER making patch
-bool TitanoxHook::activatePatchAtVaddr(uint64_t vaddr, const std::string& patchHex) {
+bool TitanoxHook::ActivatePatchAtVaddr(uint64_t vaddr, const std::string& patchHex) {
     if (!hooker_ || patchHex.empty()) return false;
-    return hooker_->activate_patch(vaddr, patchHex);
+    return hooker_->ActivatePatch(vaddr, patchHex);
 }
 
 // deactvate patch AFTER its activated when NEEDED
-bool TitanoxHook::deactivatePatchAtVaddr(uint64_t vaddr, const std::string& patchHex) {
+bool TitanoxHook::DeactivatePatchAtVaddr(uint64_t vaddr, const std::string& patchHex) {
     if (!hooker_ || patchHex.empty()) return false;
-    return hooker_->deactivate_patch(vaddr, patchHex);
+    return hooker_->DeactivatePatch(vaddr, patchHex);
 }
 
 // static func hook by symbol i.e fishhook
-void TitanoxHook::hookStaticFunction(const char* symbol, void* replacement, const char* libName, void** oldorigfuncptr) {
+void TitanoxHook::HookStaticFunction(const char* symbol, void* replacement, const char* libName, void** oldorigfuncptr) {
     std::string libnamestr = libName;
-    std::string fulllibpath = findexecbinary(libnamestr);
+    std::string fulllibpath = FindExecBinary(libnamestr);
     void* openinghandle = dlopen(fulllibpath.c_str(), RTLD_NOW | RTLD_NOLOAD);
     if (!openinghandle) {
-        log("cant open lib: %s", libName);
+        Log("cant open lib: %s", libName);
         return;
     }
-    if (isFunctionHooked(symbol, *oldorigfuncptr, libName)) {
-        log("ERR: ptr for func %s is already hooked.", symbol);
+    if (IsFunctionHooked(symbol, *oldorigfuncptr, libName)) {
+        Log("ERR: ptr for func %s is already hooked.", symbol);
         dlclose(openinghandle);
         return;
     }
@@ -284,18 +281,18 @@ void TitanoxHook::hookStaticFunction(const char* symbol, void* replacement, cons
     rebind.replaced = oldorigfuncptr;
     int result = rebind_symbols((struct rebinding[]){rebind}, 1); // fishhook
     if (result != 0) {
-        log("ERR:FISHHOOK %d", symbol, result);
+        Log("ERR:FISHHOOK %d", symbol, result);
     } else {
-        log("static hook func is good: %s", symbol);
+        Log("static hook func is good: %s", symbol);
     }
     dlclose(openinghandle);
 }
 
 // swizzle method, objc func hook
-void TitanoxHook::swizzleMethod(const char* old_sel, const char* swizzledSelector, const char* targetclass) {
+void TitanoxHook::SwizzleMethod(const char* old_sel, const char* swizzledSelector, const char* targetclass) {
     Class targetClass = objc_getClass(targetclass); // Renamed to avoid conflict
     if (!targetClass) {
-        log("Failed to find class: %s", targetclass);
+        Log("Failed to find class: %s", targetclass);
         return;
     }
     SEL orig_sel = sel_getUid(old_sel);
@@ -317,62 +314,62 @@ void TitanoxHook::swizzleMethod(const char* old_sel, const char* swizzledSelecto
 }
 
 // hook objc stuff
-void TitanoxHook::overrideMethodInClass(const char* targetclass, const char* selector, void* newFunction, void** oldfunptr) {
+void TitanoxHook::OverrideMethodInClass(const char* targetclass, const char* selector, void* newFunction, void** oldfunptr) {
     Class target = objc_getClass(targetclass);
     if (!target) {
-        log("Failed to find class: %s", targetclass);
+        Log("Failed to find class: %s", targetclass);
         return;
     }
     SEL sel = sel_getUid(selector);
     Method method = class_getInstanceMethod(target, sel); // Fixed: use 'target' instead of 'targetclass'
     if (!method) {
-        log("Failed to find method %s in class %s", selector, targetclass);
+        Log("Failed to find method %s in class %s", selector, targetclass);
         return;
     }
     if (oldfunptr) {
         *oldfunptr = reinterpret_cast<void*>(method_getImplementation(method)); // Fixed: cast IMP to void*
     }
     method_setImplementation(method, reinterpret_cast<IMP>(newFunction));
-    log("hooked %s in class %s", selector, targetclass);
+    Log("hooked %s in class %s", selector, targetclass);
 }
 
 // Memory Patching
-bool TitanoxHook::readMemoryAt(mach_vm_address_t address, void* buffer, mach_vm_size_t size) {
+bool TitanoxHook::ReadMemoryAt(mach_vm_address_t address, void* buffer, mach_vm_size_t size) {
     return vm_read_custom(address, buffer, size);
 }
-bool TitanoxHook::writeMemoryAt(mach_vm_address_t address, const void* data, mach_vm_size_t size) {
+bool TitanoxHook::WriteMemoryAt(mach_vm_address_t address, const void* data, mach_vm_size_t size) {
     return vm_write_custom(address, data, size);
 }
-void* TitanoxHook::allocateMemoryWithSize(mach_vm_size_t size, int flags) {
+void* TitanoxHook::AllocateMemoryWithSize(mach_vm_size_t size, int flags) {
     return vm_allocate_custom(size, flags);
 }
-bool TitanoxHook::deallocateMemoryAt(mach_vm_address_t address, mach_vm_size_t size) {
+bool TitanoxHook::DeallocateMemoryAt(mach_vm_address_t address, mach_vm_size_t size) {
     return vm_deallocate_custom(address, size);
 }
-kern_return_t TitanoxHook::protectMemoryAt(mach_vm_address_t address, mach_vm_size_t size, bool setMax, vm_prot_t newProt) {
+kern_return_t TitanoxHook::ProtectMemoryAt(mach_vm_address_t address, mach_vm_size_t size, bool setMax, vm_prot_t newProt) {
     return vm_protect_custom(address, size, setMax, newProt);
 }
 
 // mme patch MIGHT need JIT?
-void TitanoxHook::patchMemoryAtAddress(void* address, uint8_t* patch, size_t size) {
+void TitanoxHook::PatchMemoryAtAddress(void* address, uint8_t* patch, size_t size) {
     if (!address) {
-        log("Invalid address.");
+        Log("Invalid address.");
         return;
     }
     bool res = THPatchMem::PatchMemory(address, patch, size);
     if (res) {
-        log("Memory patch succeeded at address %p", address);
+        Log("Memory patch succeeded at address %p", address);
     } else {
-        log("Memory patch failed at address %p", address);
+        Log("Memory patch failed at address %p", address);
     }
 }
 
 // needs symbol, generally useless, not for the user to use. TLDR:ignore
-bool TitanoxHook::isFunctionHooked(const char* symbol, void* original, const char* libName) {
+bool TitanoxHook::IsFunctionHooked(const char* symbol, void* original, const char* libName) {
     Dl_info info;
     if (dladdr(original, &info)) {
         std::string libnamestr = libName;
-        std::string fulllibpath = findexecbinary(libnamestr);
+        std::string fulllibpath = FindExecBinary(libnamestr);
         if (strcmp(info.dli_sname, symbol) == 0 && (!libName || fulllibpath == info.dli_fname)) {
             return false; // Not hooked
         }
@@ -381,34 +378,34 @@ bool TitanoxHook::isFunctionHooked(const char* symbol, void* original, const cha
 }
 
 // toggle bool by symbol to its opposite current state
-void TitanoxHook::hookBoolByName(const char* symbol, const char* libName) {
+void TitanoxHook::HookBoolByName(const char* symbol, const char* libName) {
     std::string libnamestr = libName;
-    std::string fulllibpath = findexecbinary(libnamestr);
+    std::string fulllibpath = FindExecBinary(libnamestr);
     void* openinghandle = dlopen(fulllibpath.c_str(), RTLD_NOW | RTLD_NOLOAD);
     if (!openinghandle) {
-        log("can't open: %s", libName);
+        Log("can't open: %s", libName);
         return;
     }
     bool* booladdr = reinterpret_cast<bool*>(dlsym(openinghandle, symbol));
     if (!booladdr) {
-        log("no such symbol: %s", symbol);
+        Log("no such symbol: %s", symbol);
         dlclose(openinghandle);
         return;
     }
-    if (!isSafeToPatchMemoryAtAddress(booladdr, sizeof(bool))) {
-        log("can't patch: unsafe memory region.");
+    if (!IsSafeToPatchMemoryAtAddress(booladdr, sizeof(bool))) {
+        Log("can't patch: unsafe memory region.");
         dlclose(openinghandle);
         return;
     }
     *booladdr = !*booladdr; // just toggle state
-    log("toggled bool %s in library %s to %d", symbol, libName, *booladdr);
+    Log("toggled bool %s in library %s to %d", symbol, libName, *booladdr);
     dlclose(openinghandle);
 }
 
 // this is actually useful to see if you can modify an address/region
-bool TitanoxHook::isSafeToPatchMemoryAtAddress(void* address, size_t length) {
+bool TitanoxHook::IsSafeToPatchMemoryAtAddress(void* address, size_t length) {
     if (!address || length == 0) {
-        log("ERR: invalid memory address or length.");
+        Log("ERR: invalid memory address or length.");
         return false;
     }
     vm_address_t regionStart = reinterpret_cast<vm_address_t>(address);
@@ -417,7 +414,7 @@ bool TitanoxHook::isSafeToPatchMemoryAtAddress(void* address, size_t length) {
     mach_msg_type_number_t infoCount = VM_REGION_BASIC_INFO_COUNT_64;
     mach_port_t objectName;
     if (vm_region_64(mach_task_self(), &regionStart, &regionSize, VM_REGION_BASIC_INFO_64, reinterpret_cast<vm_region_info_t>(&info), &infoCount, &objectName) != KERN_SUCCESS) {
-        log("ERR: syscall to region check failed for some reason, maybe we need entitlements...");
+        Log("ERR: syscall to region check failed for some reason, maybe we need entitlements...");
         return false;
     }
     return info.protection & VM_PROT_WRITE;

@@ -9,8 +9,8 @@ extern "C" {
 
 #include <stdbool.h>
 
-bool hook(void *o[], void *n[], int c);
-bool unhook(void *o[], int c);
+bool Hook(void *o[], void *n[], int c);
+bool Unhook(void *o[], int c);
 
 #ifdef __cplusplus
 }

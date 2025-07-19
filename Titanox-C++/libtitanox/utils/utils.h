@@ -8,7 +8,7 @@ std::string THGetTimestamp();
 std::string THGetThreadID();
 std::string THGetDocumentsPath();
 std::string THGetLogFilePath();
-std::string getBundlePath();
+std::string GetBundlePath();
 void THWriteToFile(const std::string& text, const std::string& filePath);
 std::string THReadFile(const std::string& filePath);
 bool THFileExists(const std::string& filePath);

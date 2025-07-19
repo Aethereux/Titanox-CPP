@@ -13,6 +13,8 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <mach-o/dyld.h>
+#include <libgen.h>
 
 // ------------------------
 // YYYY-MM-DD HH:mm:ss
@@ -131,4 +133,18 @@ void THLog(const char* format, ...) {
             << formatted;
 
     THWriteToFile(logLine.str() + "\n", THGetLogFilePath());
+}
+
+// ------------------------
+// Bundle path getter
+// ------------------------
+std::string GetBundlePath() {
+    char path[1024];
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) == 0) {
+        // Remove the filename to get directory path
+        char* dirPath = dirname(path);
+        return std::string(dirPath);
+    }
+    return "";
 }
