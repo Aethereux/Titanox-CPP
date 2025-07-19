@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/eux/Documents/Titanox/Fork/Titanox-CPP/Titanox-C++/libtitanox/.theos/obj/arm64/libtitanox.dylib'
+relocations:     []
+...

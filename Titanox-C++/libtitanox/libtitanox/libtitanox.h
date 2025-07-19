@@ -5,13 +5,14 @@
 #include <mach/mach.h>
 #include <mach/vm_map.h>
 #include <dlfcn.h>
-#include "../fishhook/fishhook.h"
-#include "../mempatch/THPatchMem.h"
-#include "../brk_hook/Hook/hook_wrapper.hpp"
-#include "../utils/utils.h"
+#include "../Fishhook/fishhook.h"
+#include "../Mempatch/THPatchMem.h"
+#include "../BreakpointHook/Hook/hook_wrapper.hpp"
+#include "../Utils/utils.h"
 #include "../MemX/MemX.hpp"
 #include "../MemX/VMTWrapper.h"
-#include "../static-inline-hook/sih.hpp"
+#include "../Static-Inline-Hook/sih.hpp"
+#include "../VM_Funcs/vm.hpp"
 
 class TitanoxHook {
 private:

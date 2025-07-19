@@ -1,5 +1,5 @@
 #include "THPatchMem.h"
-#include "../utils/utils.h"
+#include "../Utils/utils.h"
 
 #include <mach/mach.h>
 #include <memory>

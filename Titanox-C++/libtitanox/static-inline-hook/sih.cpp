@@ -1,5 +1,5 @@
 #include "sih.hpp"
-#include "../utils/utils.h"
+#include "../Utils/utils.h"
 #include <mach-o/dyld.h>
 #include <mach-o/fat.h>
 #include <mach/vm_page_size.h>
@@ -55,18 +55,6 @@ std::string GetHomeDirectory() {
     }
     CFRelease(finalURL);
     return result;
-}
-
-
-// not even i knew this existed
-// can't use nsbundle so...
-std::string GetBundlePath() {
-    char path[1024];
-    uint32_t size = sizeof(path);
-    if (_NSGetExecutablePath(path, &size) == 0) {
-        return fs::path(path).parent_path().string();
-    }
-    return fs::current_path().string();
 }
 
 MachOHooker::MachOHooker(const std::string& macho_name) : macho_name_(macho_name) {
@@ -467,7 +455,7 @@ HookBlock* MachOHooker::FindHookBlock(void* base, uint64_t vaddr) const {
         return nullptr;
     }
 
-    auto* hook_block = reinterpret_cast<HookBlock*>(reinterpret_cast<uint64_t>(header) + va_to_rva(data_seg->vmaddr));
+    auto* hook_block = reinterpret_cast<HookBlock*>(reinterpret_cast<uint64_t>(header) + VaToRva(data_seg->vmaddr));
     for (size_t i = 0; i < DATA_PAGE_SIZE / sizeof(HookBlock); ++i) {
         if (hook_block[i].hook_vaddr == vaddr) {
             return &hook_block[i];
@@ -570,7 +558,7 @@ std::optional<std::string> MachOHooker::ApplyPatch(uint64_t vaddr, const std::st
 
     for (size_t i = 0; i < DATA_PAGE_SIZE / sizeof(HookBlock); ++i) {
         if (hook_block[i].hook_vaddr == func_rva) {
-            if (!patch_bytes.empty() && hook_block[i].patch_hash != calculate_patch_hash(vaddr, patch_bytes)) {
+            if (!patch_bytes.empty() && hook_block[i].patch_hash != CalculatePatchHash(vaddr, patch_bytes)) {
                 return "Patch bytes have changed";
             }
             return "Offset already patched";

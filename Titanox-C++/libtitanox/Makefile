@@ -1,4 +1,4 @@
-TARGET := iphone:clang:13.7
+TARGET := iphone:clang:latest:latest
 ARCHS = arm64
 DEBUG = 0
 FINALPACKAGE = 1
@@ -20,18 +20,17 @@ LIBRARY_NAME = libtitanox
     $(wildcard decoder/capstone/arch/AArch64/*.c) \
     $(filter-out decoder/capstone/cs.c, $(wildcard decoder/capstone/*.c))
 	
-FISHHOOK_FILES := $(wildcard fishhook/*.c)
-LIBHOOKER_FILES := $(wildcard LH_jailed/*.cpp)
-BRK_HOOK_FILES := $(wildcard brk_hook/Hook/*.c)
-MEMPATCH_FILES := $(wildcard mempatch/*.cpp)
-UTILS_FILES := $(wildcard utils/*.cpp)
-MAIN_SRCS := $(wildcard libtitanox/*.cpp)
-VM_FILES := $(wildcard vm_funcs/*.cpp)
+FISHHOOK_FILES := $(wildcard Fishhook/*.c)
+BRK_HOOK_FILES := $(wildcard BreakpointHook/Hook/*.c)
+MEMPATCH_FILES := $(wildcard MemPatch/*.cpp)
+UTILS_FILES := $(wildcard Utils/*.cpp)
+MAIN_SRCS := $(wildcard Libtitanox/*.cpp)
+VM_FILES := $(wildcard VM_Funcs/*.cpp)
 MEMX_FILES := $(wildcard MemX/*.cpp)
-SIH_FILES := $(wildcard static-inline-hook/*.cpp)
+SIH_FILES := $(wildcard Static-Inline-Hook/*.cpp)
 DISASM_FILES := $(wildcard decoder/*.cpp)
 
-$(LIBRARY_NAME)_FILES = $(SIH_FILES) $(DISASM_FILES) $(MEMX_FILES) $(BRK_HOOK_FILES) $(VM_FILES) $(UTILS_FILES) $(FISHHOOK_FILES) $(MAIN_SRCS) $(MEMPATCH_FILES)
+$(LIBRARY_NAME)_FILES = $(SIH_FILES) $(MEMX_FILES) $(BRK_HOOK_FILES) $(VM_FILES) $(UTILS_FILES) $(FISHHOOK_FILES) $(MAIN_SRCS) $(MEMPATCH_FILES)
 $(LIBRARY_NAME)_CFLAGS = -fobjc-arc -Wall -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-value -Wno-unused-function -Idecoder/. -Idecoder/capstone -Idecoder/capstone/include
 
 $(LIBRARY_NAME)_CCFLAGS = -x objective-c++ -std=c++17 -fno-rtti -DNDEBUG -Wall -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-value -Wno-unused-function -Idecoder/. -Idecoder/capstone -Idecoder/capstone/include 

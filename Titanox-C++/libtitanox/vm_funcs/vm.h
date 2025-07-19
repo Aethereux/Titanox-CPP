@@ -6,11 +6,11 @@
 
 class TotallyNotVM {
 public:
-    static kern_return_t protect(mach_vm_address_t address, mach_vm_size_t size, boolean_t set_max, vm_prot_t new_prot);
-    static kern_return_t allocate(mach_vm_address_t *address, mach_vm_size_t size, int flags);
-    static kern_return_t deallocate(mach_vm_address_t address, mach_vm_size_t size);
-    static kern_return_t read(mach_vm_address_t address, void *buffer, mach_vm_size_t size);
-    static kern_return_t write(mach_vm_address_t address, const void *data, mach_vm_size_t size);
+    static kern_return_t Protect(mach_vm_address_t address, mach_vm_size_t size, boolean_t set_max, vm_prot_t new_prot);
+    static kern_return_t Allocate(mach_vm_address_t *address, mach_vm_size_t size, int flags);
+    static kern_return_t Deallocate(mach_vm_address_t address, mach_vm_size_t size);
+    static kern_return_t Read(mach_vm_address_t address, void *buffer, mach_vm_size_t size);
+    static kern_return_t Write(mach_vm_address_t address, const void *data, mach_vm_size_t size);
 };
 
 typedef struct {

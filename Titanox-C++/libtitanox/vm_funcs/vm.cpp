@@ -1,8 +1,8 @@
 #include "vm.h"
-#include "utils/utils.h"
+#include "Utils/utils.h"
 #include "mach/message.h"
 
-kern_return_t TotallyNotVM::protect(mach_vm_address_t address, mach_vm_size_t size, boolean_t set_max, vm_prot_t new_prot) {
+kern_return_t TotallyNotVM::Protect(mach_vm_address_t address, mach_vm_size_t size, boolean_t set_max, vm_prot_t new_prot) {
     if (size == 0) {
         THLog("protect failed: size is zero");
         return KERN_INVALID_ARGUMENT;
@@ -47,7 +47,7 @@ kern_return_t TotallyNotVM::protect(mach_vm_address_t address, mach_vm_size_t si
     return reply.ret_code;
 }
 
-kern_return_t TotallyNotVM::allocate(mach_vm_address_t *address, mach_vm_size_t size, int flags) {
+kern_return_t TotallyNotVM::Allocate(mach_vm_address_t *address, mach_vm_size_t size, int flags) {
     if (!address) {
         THLog("allocate failed: null address pointer");
         return KERN_INVALID_ARGUMENT;
@@ -105,7 +105,7 @@ kern_return_t TotallyNotVM::allocate(mach_vm_address_t *address, mach_vm_size_t 
     return KERN_SUCCESS;
 }
 
-kern_return_t TotallyNotVM::deallocate(mach_vm_address_t address, mach_vm_size_t size) {
+kern_return_t TotallyNotVM::Deallocate(mach_vm_address_t address, mach_vm_size_t size) {
     if (size == 0) {
         THLog("deallocate failed: size is zero");
         return KERN_INVALID_ARGUMENT;
@@ -149,7 +149,7 @@ kern_return_t TotallyNotVM::deallocate(mach_vm_address_t address, mach_vm_size_t
     return reply.ret_code;
 }
 
-kern_return_t TotallyNotVM::read(mach_vm_address_t address, void *buffer, mach_vm_size_t size) {
+kern_return_t TotallyNotVM::Read(mach_vm_address_t address, void *buffer, mach_vm_size_t size) {
     if (!buffer) {
         THLog("read failed: null buffer");
         return KERN_INVALID_ARGUMENT;
@@ -212,7 +212,7 @@ kern_return_t TotallyNotVM::read(mach_vm_address_t address, void *buffer, mach_v
     return KERN_SUCCESS;
 }
 
-kern_return_t TotallyNotVM::write(mach_vm_address_t address, const void *data, mach_vm_size_t size) {
+kern_return_t TotallyNotVM::Write(mach_vm_address_t address, const void *data, mach_vm_size_t size) {
     if (!data) {
         THLog("write failed: null data pointer");
         return KERN_INVALID_ARGUMENT;

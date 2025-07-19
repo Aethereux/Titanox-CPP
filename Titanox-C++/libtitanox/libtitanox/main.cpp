@@ -11,11 +11,6 @@
 #include <map>
 #include <dirent.h>
 #include <sys/stat.h>
-#include "../fishhook/fishhook.h"
-#include "../brk_hook/Hook/hook_wrapper.hpp"
-#include "../MemX/MemX.hpp"
-#include "../MemX/VMTWrapper.h"
-#include "../vm_funcs/vm.hpp"
 
 // yet another wrapper
 void TitanoxHook::Log(const char* format, ...) {
