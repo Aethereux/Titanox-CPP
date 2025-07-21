@@ -11,6 +11,8 @@
 #include <mach/mach.h>
 #include <mach-o/dyld.h>
 #include <sys/mman.h>
+#include <mutex>
+#include <setjmp.h>
 
 namespace MemX {
 
@@ -34,9 +36,9 @@ namespace MemX {
     */
 
     static std::mutex sigsegv_mutex; // Mutex to protect global sigaction from races
-    thread_local sigjmp_buf thread_jump_buffer; // Thread-local jump buffer (isolated per thread)
+    static thread_local sigjmp_buf thread_jump_buffer; // Thread-local jump buffer (isolated per thread)
     // SIGSEGV handler - long jumps to thread-local buffer
-    void sigsegv_handler(int) { 
+    static void sigsegv_handler(int) { 
         siglongjmp(thread_jump_buffer, 1);
     }
 
